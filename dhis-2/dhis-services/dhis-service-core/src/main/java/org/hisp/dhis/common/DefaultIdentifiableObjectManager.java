@@ -55,6 +55,10 @@ import org.hisp.dhis.category.CategoryCombo;
 import org.hisp.dhis.category.CategoryOption;
 import org.hisp.dhis.category.CategoryOptionCombo;
 import org.hisp.dhis.common.exception.InvalidIdentifierReferenceException;
+import org.hisp.dhis.feedback.ErrorCode;
+import org.hisp.dhis.feedback.ErrorReport;
+import org.hisp.dhis.feedback.ObjectReport;
+import org.hisp.dhis.feedback.TypeReport;
 import org.hisp.dhis.hibernate.HibernateProxyUtils;
 import org.hisp.dhis.schema.Schema;
 import org.hisp.dhis.schema.SchemaService;
@@ -1250,6 +1254,60 @@ public class DefaultIdentifiableObjectManager
 
         IdentifiableObjectStore<IdentifiableObject> store = getIdentifiableObjectStore( UserGroup.class );
         schemas.forEach( schema -> store.removeUserGroupFromSharing( userGroupUid, schema.getTableName() ) );
+    }
+
+    public TypeReport validateTranslations( Set<Translation> translations, Class<?> entityClass )
+    {
+        TypeReport typeReport = new TypeReport( Translation.class );
+
+        Set<String> locales = new HashSet<>();
+        List<Translation> translationList = new ArrayList<>( translations );
+
+        for ( int idx = 0; idx < translationList.size(); idx++ )
+        {
+            ObjectReport objectReport = new ObjectReport( Translation.class, idx );
+            Translation translation = translationList.get( idx );
+            String propertyLocale = StringUtils.joinWith( "_", translation.getLocale(), translation.getProperty() );
+
+            if ( locales.contains( propertyLocale ) )
+            {
+                objectReport.addErrorReport(
+                    new ErrorReport( Translation.class, ErrorCode.E1106, translation.getProperty(),
+                        translation.getLocale() )
+                            .setErrorKlass( entityClass ) );
+            }
+            else
+            {
+                locales.add( propertyLocale );
+            }
+
+            if ( translation.getLocale() == null )
+            {
+                objectReport.addErrorReport(
+                    new ErrorReport( Translation.class, ErrorCode.E4000, "locale" ).setErrorKlass( entityClass ) );
+            }
+
+            if ( translation.getProperty() == null )
+            {
+                objectReport.addErrorReport( new ErrorReport( Translation.class, ErrorCode.E4000, "property" )
+                    .setErrorKlass( entityClass ) );
+            }
+
+            if ( translation.getValue() == null )
+            {
+                objectReport.addErrorReport(
+                    new ErrorReport( Translation.class, ErrorCode.E4000, "value" ).setErrorKlass( entityClass ) );
+            }
+
+            typeReport.addObjectReport( objectReport );
+
+            if ( !objectReport.isEmpty() )
+            {
+                typeReport.getStats().incIgnored();
+            }
+        }
+
+        return typeReport;
     }
 
     @SuppressWarnings( "unchecked" )

@@ -35,6 +35,7 @@ import java.util.Set;
 
 import org.hisp.dhis.attribute.Attribute;
 import org.hisp.dhis.attribute.AttributeValue;
+import org.hisp.dhis.feedback.TypeReport;
 import org.hisp.dhis.translation.Translation;
 import org.hisp.dhis.user.User;
 import org.hisp.dhis.user.UserInfo;
@@ -186,6 +187,8 @@ public interface IdentifiableObjectManager
         Attribute attribute, List<String> values );
 
     Map<Class<? extends IdentifiableObject>, IdentifiableObject> getDefaults();
+
+    TypeReport validateTranslations( Set<Translation> translations, Class<?> entityClass );
 
     void updateTranslations( IdentifiableObject persistedObject, Set<Translation> translations );
 

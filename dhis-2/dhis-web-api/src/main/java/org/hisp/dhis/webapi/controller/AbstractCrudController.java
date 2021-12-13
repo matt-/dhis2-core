@@ -64,8 +64,6 @@ import org.hisp.dhis.dxf2.metadata.feedback.ImportReport;
 import org.hisp.dhis.dxf2.metadata.feedback.ImportReportMode;
 import org.hisp.dhis.dxf2.webmessage.WebMessage;
 import org.hisp.dhis.dxf2.webmessage.WebMessageException;
-import org.hisp.dhis.feedback.ErrorCode;
-import org.hisp.dhis.feedback.ErrorReport;
 import org.hisp.dhis.feedback.ObjectReport;
 import org.hisp.dhis.feedback.Status;
 import org.hisp.dhis.feedback.TypeReport;
@@ -86,7 +84,6 @@ import org.hisp.dhis.schema.MergeService;
 import org.hisp.dhis.schema.Property;
 import org.hisp.dhis.schema.validation.SchemaValidator;
 import org.hisp.dhis.sharing.SharingService;
-import org.hisp.dhis.translation.Translation;
 import org.hisp.dhis.user.CurrentUser;
 import org.hisp.dhis.user.User;
 import org.hisp.dhis.user.UserService;
@@ -107,7 +104,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.Lists;
 
 /**
  * @author Morten Olav Hansen <mortenoh@gmail.com>
@@ -180,44 +176,11 @@ public abstract class AbstractCrudController<T extends IdentifiableObject> exten
 
         T object = renderService.fromJson( request.getInputStream(), getEntityClass() );
 
-        TypeReport typeReport = new TypeReport( Translation.class );
+        TypeReport validateReport = manager.validateTranslations( object.getTranslations(), getEntityClass() );
 
-        List<Translation> objectTranslations = Lists.newArrayList( object.getTranslations() );
-
-        for ( int idx = 0; idx < object.getTranslations().size(); idx++ )
+        if ( validateReport.hasErrorReports() )
         {
-            ObjectReport objectReport = new ObjectReport( Translation.class, idx );
-            Translation translation = objectTranslations.get( idx );
-
-            if ( translation.getLocale() == null )
-            {
-                objectReport.addErrorReport(
-                    new ErrorReport( Translation.class, ErrorCode.E4000, "locale" ).setErrorKlass( getEntityClass() ) );
-            }
-
-            if ( translation.getProperty() == null )
-            {
-                objectReport.addErrorReport( new ErrorReport( Translation.class, ErrorCode.E4000, "property" )
-                    .setErrorKlass( getEntityClass() ) );
-            }
-
-            if ( translation.getValue() == null )
-            {
-                objectReport.addErrorReport(
-                    new ErrorReport( Translation.class, ErrorCode.E4000, "value" ).setErrorKlass( getEntityClass() ) );
-            }
-
-            typeReport.addObjectReport( objectReport );
-
-            if ( !objectReport.isEmpty() )
-            {
-                typeReport.getStats().incIgnored();
-            }
-        }
-
-        if ( typeReport.hasErrorReports() )
-        {
-            return typeReport( typeReport );
+            return typeReport( validateReport );
         }
 
         validateAndThrowErrors( () -> schemaValidator.validate( persistedObject ) );
